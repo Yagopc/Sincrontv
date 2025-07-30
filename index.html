@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reproducir URL en dos dispositivos</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 40px auto; }
+    input[type="text"] { width: 95%; padding: 8px; margin-bottom: 10px; }
+    button { padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h2>Reproducir URL en dos dispositivos</h2>
+  <input type="text" id="url" placeholder="Pega aquí la URL a reproducir">
+  <button onclick="enviar()">Reproducir</button>
+  <hr>
+  <p id="estado">Conectando...</p>
+  <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
+  <script>
+    // Cambia esto por tu Channel ID de Scaledrone
+    const CHANNEL_ID = "YOUR_CHANNEL_ID_HERE";
+    const ROOM_NAME = "mi_casa"; // Nombre de la sala. Puedes cambiarlo si quieres.
+
+    const drone = new ScaleDrone(CHANNEL_ID);
+    let room;
+
+    drone.on('open', error => {
+      if (error) {
+        document.getElementById('estado').textContent = 'Error de conexión';
+        return;
+      }
+      document.getElementById('estado').textContent = 'Conectado ✅';
+      room = drone.subscribe(ROOM_NAME);
+      room.on('data', (message, client) => {
+        // Evita que el que envía la URL la reciba dos veces
+        if (client && client.id !== drone.clientId) {
+          reproducir(message.url);
+        }
+      });
+    });
+
+    function enviar() {
+      const url = document.getElementById('url').value.trim();
+      if (!url) {
+        alert('Introduce una URL');
+        return;
+      }
+      // Envía la URL a la sala
+      room.publish({ message: { url } });
+      reproducir(url);
+    }
+
+    function reproducir(url) {
+      window.open(url, '_blank');
+    }
+  </script>
+</body>
+</html>
