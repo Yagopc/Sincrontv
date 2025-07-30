@@ -2,56 +2,82 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Reproducir URL en dos dispositivos</title>
+  <title>Sincronizar apertura de URL</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    body { font-family: sans-serif; max-width: 400px; margin: 40px auto; }
-    input[type="text"] { width: 95%; padding: 8px; margin-bottom: 10px; }
-    button { padding: 10px 20px; }
+    body { font-family: sans-serif; background: #f2f2f2; padding: 30px; }
+    .container { background: #fff; max-width: 400px; margin: 30px auto; padding: 25px 20px; border-radius: 12px; box-shadow: 0 2px 8px #aaa3; }
+    input, button { font-size: 1em; padding: 7px; margin: 6px 0; width: 100%; }
+    button { background: #0077ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    code { background: #eee; padding: 2px 5px; border-radius: 3px; }
   </style>
 </head>
 <body>
-  <h2>Reproducir URL en dos dispositivos</h2>
-  <input type="text" id="url" placeholder="Pega aquí la URL a reproducir">
-  <button onclick="enviar()">Reproducir</button>
-  <hr>
-  <p id="estado">Conectando...</p>
-  <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
+  <div class="container">
+    <h2>Sincronizar apertura de URL</h2>
+    <p>
+      1. Abre esta página en dos dispositivos.<br>
+      2. Ingresa la url y presiona <b>ABRIR EN AMBOS</b>.<br>
+      3. Se abrirá a la vez en ambos dispositivos.
+    </p>
+    <input type="text" id="url" placeholder="https://tusitio.com/..." autocomplete="off">
+    <button onclick="enviar()">ABRIR EN AMBOS</button>
+    <hr>
+    <div>
+      <b>¿Cómo sincroniza?</b>
+      <ul>
+        <li>Ambos dispositivos deben estar abiertos en esta página.</li>
+        <li>Cuando uno pulse el botón, ambos abrirán la URL.</li>
+      </ul>
+    </div>
+    <div style="font-size:0.9em; color:#555;">
+      <b>Tip:</b> Si usas esto con más personas, puedes cambiar el <code>sessionId</code> para tener salas independientes.<br>
+      <span id="session"></span>
+    </div>
+  </div>
   <script>
-    // Cambia esto por tu Channel ID de Scaledrone
-    const CHANNEL_ID = "GWCHGN98WKQSmUMU";
-    const ROOM_NAME = "house"; // Nombre de la sala. Puedes cambiarlo si quieres.
+    // CONFIGURACIÓN FIREBASE
+    const firebaseConfig = {
+      apiKey: "AIzaSyBzR8kxxxxxxxxxxxxxxx",   // <-- REEMPLAZA estos datos por los tuyos
+      authDomain: "TU-PROYECTO.firebaseapp.com",
+      databaseURL: "https://TU-PROYECTO.firebaseio.com",
+      projectId: "TU-PROYECTO",
+      storageBucket: "TU-PROYECTO.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:xxxxxxxxxxxx"
+    };
 
-    const drone = new ScaleDrone(CHANNEL_ID);
-    let room;
+    // Puedes crear un proyecto Firebase gratis en: https://console.firebase.google.com/
+    // Solo necesitas copiar los datos de configuración (no es necesario autenticar usuarios)
 
-    drone.on('open', error => {
-      if (error) {
-        document.getElementById('estado').textContent = 'Error de conexión';
-        return;
+    // --- NO MODIFICAR DESDE AQUÍ ---
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Cambia esto para tener "salas" distintas
+    const sessionId = "sala-demo-1";
+    document.getElementById("session").textContent = "sessionId: " + sessionId;
+
+    let lastUrl = "";
+    db.ref(sessionId + "/url").on("value", (snap) => {
+      const url = snap.val();
+      if (url && url !== lastUrl) {
+        lastUrl = url;
+        // Espera 400ms para que la pestaña "emisora" no duplique ventana
+        setTimeout(() => {
+          window.open(url, "_blank");
+        }, 400);
       }
-      document.getElementById('estado').textContent = 'Conectado ✅';
-      room = drone.subscribe(ROOM_NAME);
-      room.on('data', (message, client) => {
-        // Evita que el que envía la URL la reciba dos veces
-        if (client && client.id !== drone.clientId) {
-          reproducir(message.url);
-        }
-      });
     });
 
     function enviar() {
-      const url = document.getElementById('url').value.trim();
-      if (!url) {
-        alert('Introduce una URL');
+      const url = document.getElementById("url").value.trim();
+      if (!/^https?:\/\/.+/i.test(url)) {
+        alert("Ingresa una URL válida (debe empezar con http:// o https://)");
         return;
       }
-      // Envía la URL a la sala
-      room.publish({ message: { url } });
-      reproducir(url);
-    }
-
-    function reproducir(url) {
-      window.open(url, '_blank');
+      db.ref(sessionId + "/url").set(url);
     }
   </script>
 </body>
